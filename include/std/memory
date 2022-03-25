@@ -1,0 +1,6 @@
+#ifndef STD_MEMORY
+#define STD_MEMORY
+
+#include "zl_unique_ptr.hpp"
+
+#endif /* STD_MEMORY */

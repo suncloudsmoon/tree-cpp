@@ -1,0 +1,9 @@
+#ifndef STD_UTILITY
+#define STD_UTILITY
+
+namespace std {
+	template<typename T>
+	T&& move(T &&src) noexcept { return static_cast<T&&>(src); }
+}
+
+#endif /* STD_UTILITY */

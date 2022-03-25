@@ -1,0 +1,5 @@
+#ifndef STD_NEW
+#define STD_NEW
+
+
+#endif /* STD_NEW */
