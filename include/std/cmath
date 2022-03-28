@@ -1,0 +1,60 @@
+/*
+ * Copyright (c) 2022, suncloudsmoon and the tree-cpp contributors.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#ifndef STD_CMATH_HPP
+#define STD_CMATH_HPP
+
+#include <stddef.h>
+#include <stdint.h>
+
+namespace {
+	consteval size_t __strlen__(const char *str) {
+		if (!str) return 0;
+		size_t index = 0;
+		for (; str[index]; index++);
+		return index;
+	}
+
+	template<typename T>
+	consteval T __eval_bin_unsig__(const char *str) {
+		if (!str) return 0;
+		T res = 0;
+		T place = 1;
+		int len = static_cast<int>(__strlen__(str));
+		for (int i = len - 1; i >= 0; i--) {
+			char c = str[i];
+			if (c == ' ' || c == ',' || c == 'b') continue;
+			else if (c == '1') res += place;
+			place *= 2;
+		}
+		return res;
+	}
+}
+
+namespace std {
+	inline constexpr int isinf(float x) {
+		constexpr uint32_t exponent_mask = __eval_bin_unsig__<uint32_t>("0111,1111 1000,0000 0000,0000 0000,0000");
+		constexpr uint32_t significand_mask = __eval_bin_unsig__<uint32_t>("0000,0000 0111,1111 1111,1111 1111,1111");
+		/* omission of extra '&' is intentional (for avoiding branching) */
+		return (((*reinterpret_cast<const uint32_t*>(&x) & exponent_mask) << 1) == (exponent_mask << 1)) 
+				& ((*reinterpret_cast<const uint32_t*>(&x) & significand_mask) == 0);
+	}
+}
+
+#endif /* STD_CMATH_HPP */

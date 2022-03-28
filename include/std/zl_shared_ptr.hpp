@@ -17,12 +17,25 @@
  * SOFTWARE.
  */
 
-#ifndef STD_UTILITY
-#define STD_UTILITY
+#ifndef ZL_SHARED_PTR_HPP
+#define ZL_SHARED_PTR_HPP
 
 namespace std {
+	/* Semi-conforming implementation of std::shared_ptr<>. Does not implement weak_ptr yet. */
 	template<typename T>
-	T&& move(T &&src) noexcept { return static_cast<T&&>(src); }
+	class shared_ptr {
+	public:
+		using element_type = T;
+		// No weak ptr
+	public:
+		constexpr shared_ptr() noexcept : ptr{}, counter(new long{}) {}
+		template<typename OtherType>
+		explicit shared_ptr(OtherType *pointer) : ptr(pointer), counter(new long{1}) {}
+		
+	private:
+		T* ptr;
+		long *counter;		
+	};
 }
 
-#endif /* STD_UTILITY */
+#endif /* ZL_SHARED_PTR_HPP */
