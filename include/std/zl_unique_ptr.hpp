@@ -32,7 +32,7 @@ namespace std {
 		using element_type = DataType;
 		using deleter_type = Deleter;
 	public:
-		explicit unique_ptr(pointer p = pointer()) noexcept : ptr(p) {}
+		explicit unique_ptr(pointer p = pointer()) noexcept : ptr(p), del(deleter_type()) {}
 		unique_ptr(pointer p, const Deleter &de) noexcept : ptr(p), del(de) {}
 		unique_ptr(pointer p, Deleter &&de) noexcept : ptr(p), del(de) {}
 		unique_ptr(const unique_ptr&) = delete;
@@ -101,7 +101,7 @@ namespace std {
 		using element_type = DataType;
 		using deleter_type = Deleter;
 	public:
-		explicit unique_ptr(pointer p = pointer()) noexcept : ptr(p) {}
+		explicit unique_ptr(pointer p = pointer()) noexcept : ptr(p), del(deleter_type()) {}
 		unique_ptr(pointer p, const Deleter &de) noexcept : ptr(p), del(de) {}
 		unique_ptr(pointer p, Deleter &&de) noexcept : ptr(p), del(de) {}
 		unique_ptr(const unique_ptr&) = delete;

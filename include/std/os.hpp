@@ -17,15 +17,12 @@
  * SOFTWARE.
  */
 
-#include "../include/std/memory"
-#include "../include/std/cmath"
+#ifndef STD_OS_HPP
+#define STD_OS_HPP
 
-#include <stdio.h>
-
-#include "../include/std/x86_instr.hpp"
-
-/* Using C-style printing functions to avoid conflicts with the C++'s std namespace */
-int main() {
-	printf("fmod() of 1000 %% 3: %f\n", std::fmod(2, 3));
-	printf("zl::math_instr::scale(): %f\n", zl::math_instr::scale(10.f, 10.f));
+namespace zl::os {
+	// Define platform
+	#define X86
 }
+
+#endif /* STD_OS_HPP */

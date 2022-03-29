@@ -23,6 +23,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <cstdlib>
+
+#include <numbers>
+
+#include "x86_instr.hpp"
+
 namespace {
 	consteval size_t __strlen__(const char *str) {
 		if (!str) return 0;
@@ -45,15 +51,360 @@ namespace {
 		}
 		return res;
 	}
-}
 
-namespace std {
-	inline constexpr int isinf(float x) {
+	// Checks if a floating-point number is denormalized (according to IEEE 754-1985)
+	inline constexpr bool __isdenormalized__(float x) {
 		constexpr uint32_t exponent_mask = __eval_bin_unsig__<uint32_t>("0111,1111 1000,0000 0000,0000 0000,0000");
 		constexpr uint32_t significand_mask = __eval_bin_unsig__<uint32_t>("0000,0000 0111,1111 1111,1111 1111,1111");
 		/* omission of extra '&' is intentional (for avoiding branching) */
-		return (((*reinterpret_cast<const uint32_t*>(&x) & exponent_mask) << 1) == (exponent_mask << 1)) 
+		return ((*reinterpret_cast<const uint32_t*>(&x) & exponent_mask) == 0) 
+				& ((*reinterpret_cast<const uint32_t*>(&x) & significand_mask) != 0);
+	}
+	inline constexpr bool __isdenormalized__(double x) {
+		constexpr uint64_t exponent_mask = __eval_bin_unsig__<uint64_t>("0111,1111 1111,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000");
+		constexpr uint64_t significand_mask = __eval_bin_unsig__<uint64_t>("0000,0000 0000,1111 1111,1111 1111,1111 1111,1111 1111,1111 1111,1111 1111,1111");
+		return ((*reinterpret_cast<const uint64_t*>(&x) & exponent_mask) == 0)
+				& ((*reinterpret_cast<const uint64_t*>(&x) & significand_mask) != 0);
+	}
+	template<typename T>
+	inline constexpr bool __isdenormalized__(T x) {
+		return __isdenormalized__(static_cast<double>(x));
+	}
+
+	template<typename T>
+	consteval T __eval_pow__(T base, T power) {
+		if (power < 1) return 0;
+		T result = 1;
+		for (T i = 1; i <= power; i++) { result *= base; }
+		return result;
+	}
+}
+
+namespace std {
+	#define FP_INFINITE 1
+	#define FP_NAN 2
+	#define FP_NORMAL 3
+	#define FP_SUBNORMAL 4
+	#define FP_ZERO 5
+
+	inline constexpr bool isinf(float x) {
+		constexpr uint32_t exponent_mask = __eval_bin_unsig__<uint32_t>("0111,1111 1000,0000 0000,0000 0000,0000");
+		constexpr uint32_t significand_mask = __eval_bin_unsig__<uint32_t>("0000,0000 0111,1111 1111,1111 1111,1111");
+		/* omission of extra '&' is intentional (for avoiding branching) */
+		return ((*reinterpret_cast<const uint32_t*>(&x) & exponent_mask) == exponent_mask) 
 				& ((*reinterpret_cast<const uint32_t*>(&x) & significand_mask) == 0);
+	}
+	inline constexpr bool isinf(double x) {
+		constexpr uint64_t exponent_mask = __eval_bin_unsig__<uint64_t>("0111,1111 1111,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000");
+		constexpr uint64_t significand_mask = __eval_bin_unsig__<uint64_t>("0000,0000 0000,1111 1111,1111 1111,1111 1111,1111 1111,1111 1111,1111 1111,1111");
+		return ((*reinterpret_cast<const uint64_t*>(&x) & exponent_mask) == exponent_mask)
+				& ((*reinterpret_cast<const uint64_t*>(&x) & significand_mask) == 0);
+	}
+	template<typename T>
+	inline constexpr bool isinf(T x) {
+		return isinf(static_cast<double>(x));
+	}
+
+	inline constexpr bool isnan(float x) {
+		constexpr uint32_t exponent_mask = __eval_bin_unsig__<uint32_t>("0111,1111 1000,0000 0000,0000 0000,0000");
+		constexpr uint32_t significand_mask = __eval_bin_unsig__<uint32_t>("0000,0000 0111,1111 1111,1111 1111,1111");
+		/* omission of extra '&' is intentional (for avoiding branching) */
+		return ((*reinterpret_cast<const uint32_t*>(&x) & exponent_mask) == exponent_mask) 
+				& ((*reinterpret_cast<const uint32_t*>(&x) & significand_mask) != 0);
+	}
+
+	inline constexpr bool isnan(double x) {
+		constexpr uint64_t exponent_mask = __eval_bin_unsig__<uint64_t>("0111,1111 1111,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000");
+		constexpr uint64_t significand_mask = __eval_bin_unsig__<uint64_t>("0000,0000 0000,1111 1111,1111 1111,1111 1111,1111 1111,1111 1111,1111 1111,1111");
+		return ((*reinterpret_cast<const uint64_t*>(&x) & exponent_mask) == exponent_mask)
+				& ((*reinterpret_cast<const uint64_t*>(&x) & significand_mask) != 0);
+	}
+
+	template<typename T>
+	inline constexpr bool isnan(T x) {
+		return isnan(static_cast<double>(x));
+	}
+
+	inline constexpr bool isnormal(float x) {
+		return x && !isinf(x) && !isnan(x) && !__isdenormalized__(x);
+	}
+	inline constexpr bool isnormal(double x) {
+		return x && !isinf(x) && !isnan(x) && !__isdenormalized__(x);
+	}
+	template<typename T>
+	inline constexpr bool isnormal(T x) {
+		return isnormal(static_cast<double>(x));
+	}
+
+	inline constexpr bool isfinite(float x) {
+		return !isinf(x) && !isnan(x);
+	}
+	inline constexpr bool isfinite(double x) {
+		return !isinf(x) && !isnan(x);
+	}
+	template<typename T>
+	inline constexpr bool isfinite(T x) {
+		return isfinite(static_cast<double>(x));
+	}
+
+	inline int fpclassify(float x) {
+		if (isinf(x)) return FP_INFINITE;
+		else if (isnan(x)) return FP_NAN;
+		else if (x == 0) return FP_ZERO;
+		else if (isnormal(x)) return FP_NORMAL;
+		else return FP_SUBNORMAL;
+	}
+	inline int fpclassify(double x) {
+		if (isinf(x)) return FP_INFINITE;
+		else if (isnan(x)) return FP_NAN;
+		else if (x == 0) return FP_ZERO;
+		else if (isnormal(x)) return FP_NORMAL;
+		else return FP_SUBNORMAL;
+	}
+	template<typename T>
+	inline int fpclassify(T x) {
+		return fpclassify(static_cast<double>(x));
+	}
+
+	inline constexpr bool signbit(float x) {
+		constexpr uint32_t sign_mask = __eval_bin_unsig__<uint32_t>("1000,0000 1000,0000 0000,0000 0000,0000");
+		return *reinterpret_cast<const uint32_t*>(&x) & sign_mask;
+	}
+	inline constexpr bool signbit(double x) {
+		constexpr uint64_t sign_mask = __eval_bin_unsig__<uint64_t>("1000,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000 0000,0000");
+		return  *reinterpret_cast<const uint64_t*>(&x) & sign_mask;
+	}
+	template<typename T>
+	inline constexpr bool signbit(T x) {
+		return signbit(static_cast<double>(x));
+	}
+
+	inline constexpr bool isgreater(float x, float y) {
+		return (isnormal(x) && isnormal(y)) && (x > y);
+	}
+	inline constexpr bool isgreater(double x, double y) {
+		return (isnormal(x) && isnormal(y)) && (x > y);
+	}
+	template<typename T>
+	inline constexpr bool isgreater(T x, T y) {
+		return isgreater(static_cast<double>(x), static_cast<double>(y));
+	}
+	
+	inline constexpr bool isgreaterequal(float x, float y) {
+		return (isnormal(x) && isnormal(y)) && (x >= y);
+	}
+	inline constexpr bool isgreaterequal(double x, double y) {
+		return (isnormal(x) && isnormal(y)) && (x >= y);
+	}
+	template<typename T>
+	inline constexpr bool isgreaterequal(T x, T y) {
+		return isgreaterequal(static_cast<double>(x), static_cast<double>(y));
+	}
+
+	inline constexpr bool isless(float x, float y) {
+		return (isnormal(x) && isnormal(y)) && (x < y);
+	}
+	inline constexpr bool isless(double x, double y) {
+		return (isnormal(x) && isnormal(y)) && (x < y);
+	}
+	template<typename T>
+	inline constexpr bool isless(T x, T y) {
+		return isless(static_cast<double>(x), static_cast<double>(y));
+	}
+
+	inline constexpr bool islessequal(float x, float y) {
+		return (isnormal(x) && isnormal(y)) && (x <= y);
+	}
+	inline constexpr bool islessequal(double x, double y) {
+		return (isnormal(x) && isnormal(y)) && (x <= y);
+	}
+	template<typename T>
+	inline constexpr bool islessequal(T x, T y) {
+		return islessequal(static_cast<double>(x), static_cast<double>(y));
+	}
+
+	inline constexpr bool islessgreater(float x, float y) {
+		return (isnormal(x) && isnormal(y)) && ((x < y) || (x > y));
+	}
+	inline constexpr bool islessgreater(double x, double y) {
+		return (isnormal(x) && isnormal(y)) && ((x < y) || (x > y));
+	}
+	template<typename T>
+	inline constexpr bool islessgreater(T x, T y) {
+		return islessgreater(static_cast<double>(x), static_cast<double>(y));
+	}
+
+	inline constexpr bool isunordered(float x, float y) {
+		return isnan(x) || isnan(y);
+	}
+	inline constexpr bool isunordered(double x, double y) {
+		return isnan(x) || isnan(y);
+	}
+	template<typename T>
+	inline constexpr bool isunordered(T x, T y) {
+		return isunordered(static_cast<double>(x), static_cast<double>(y));
+	}
+
+	/* Now comes the "famous" functions of <cmath> */
+	inline constexpr float fabs(float x) {
+		return abs(x);
+	}
+	inline constexpr float fabsf(float x) {
+		return abs(x);
+	}
+	inline constexpr double fabs(double x) {
+		return abs(x);
+	}
+	template<typename T>
+	inline constexpr double fabs(T x) {
+		return fabs(static_cast<double>(x));
+	}
+
+#if defined __GNUC__ && defined X86
+	/* TODO: change fmod() implementation */
+	inline float fmod(float dividend, float divisor) {
+		return zl::math_instr::fmod(dividend, divisor);
+	}
+	inline float fmodf(float dividend, float divisor) {
+		return zl::math_instr::fmod(dividend, divisor);
+	}
+	inline double fmod(double dividend, double divisor) {
+		return zl::math_instr::fmod(dividend, divisor);
+	}
+	template<typename T>
+	inline double fmod(T dividend, T divisor) {
+		return fmod(static_cast<double>(dividend), static_cast<double>(divisor));
+	}
+
+	inline float sin(float x) {
+		if ((x < -__eval_pow__<float>(2, 63)) || (x > __eval_pow__<float>(2, 63))) {
+			auto res = fmod<float>(x, 2 * std::numbers::pi);
+			return zl::math_instr::sin(res);
+		}
+		return zl::math_instr::sin(x);
+	}
+	inline float sinf(float x) {
+		return sin(x);
+	}
+	inline double sin(double x) {
+		if ((x < -__eval_pow__<double>(2, 63)) || (x > __eval_pow__<double>(2, 63))) {
+			auto res = fmod<double>(x, 2 * std::numbers::pi);
+			return zl::math_instr::sin(res);
+		}
+		return zl::math_instr::sin(x);
+	}
+	template<typename T>
+	inline double sin(T x) {
+		return sin(static_cast<double>(x));
+	}
+
+	inline float cos(float x) {
+		if ((x < -__eval_pow__<float>(2, 63)) || (x > __eval_pow__<float>(2, 63))) {
+			auto res = fmod<float>(x, 2 * std::numbers::pi);
+			return zl::math_instr::cos(res);
+		}
+		return zl::math_instr::cos(x);
+	}
+	inline float cosf(float x) {
+		return cos(x);
+	}
+	inline double cos(double x) {
+		if ((x < -__eval_pow__<double>(2, 63)) || (x > __eval_pow__<double>(2, 63))) {
+			auto res = fmod<double>(x, 2 * std::numbers::pi);
+			return zl::math_instr::cos(res);
+		}
+		return zl::math_instr::cos(x);
+	}
+	template<typename T>
+	inline double cos(T x) {
+		return cos(static_cast<double>(x));
+	}
+
+	inline float tan(float x) {
+		if ((x < -__eval_pow__<float>(2, 63)) || (x > __eval_pow__<float>(2, 63))) {
+			auto res = fmod<float>(x, 2 * std::numbers::pi);
+			return zl::math_instr::tan(res);
+		}
+		return zl::math_instr::tan(x);
+	}
+	inline float tanf(float x) {
+		return tan(x);
+	}
+	inline double tan(double x) {
+		if ((x < -__eval_pow__<double>(2, 63)) || (x > __eval_pow__<double>(2, 63))) {
+			auto res = fmod<double>(x, 2 * std::numbers::pi);
+			return zl::math_instr::tan(res);
+		}
+		return zl::math_instr::tan(x);
+	}
+	template<typename T>
+	inline double tan(T x) {
+		return tan(static_cast<double>(x));
+	}
+
+	inline float atan(float x) {
+		return zl::math_instr::atan(x);
+	}
+	inline float atanf(float x) {
+		return zl::math_instr::atan(x);
+	}
+	inline double atan(double x) {
+		return zl::math_instr::atan(x);
+	}
+	template<typename T>
+	inline double atan(T x) {
+		return atan(static_cast<double>(x));
+	}
+#else
+#error "math functions, like sin(), cos(), tan() is not defined for other compilers/platforms yet!"
+#endif
+
+}
+
+// Extended Math Operations (ZL library extensions)
+namespace zl {
+	inline float csc(float x) {
+		return 1 / std::sin(x);
+	}
+	inline float cscf(float x) {
+		return 1 / std::sin(x);
+	}
+	inline float csc(double x) {
+		return 1 / std::sin(x);
+	}
+	template<typename T>
+	inline double csc(T x) {
+		return csc(static_cast<double>(x));
+	}
+
+	inline float sec(float x) {
+		return 1 / std::cos(x);
+	}
+	inline float secf(float x) {
+		return 1 / std::cos(x);
+	}
+	inline double sec(double x) {
+		return 1 / std::cos(x);
+	}
+	template<typename T>
+	inline double sec(T x) {
+		return sec(static_cast<double>(x));
+	}
+
+	/* TODO: use the cos(x) / sin(x) property (using the fsincos() instruction) to 
+	   yield accurate results */
+	inline float cot(float x) {
+		return 1 / std::tan(x);
+	}
+	inline float cotf(float x) {
+		return 1 / std::tan(x);
+	}
+	inline double cot(double x) {
+		return 1 / std::tan(x);
+	}
+	template<typename T>
+	inline double cot(T x) {
+		return cot(static_cast<double>(x));
 	}
 }
 

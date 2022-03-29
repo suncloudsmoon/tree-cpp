@@ -17,15 +17,11 @@
  * SOFTWARE.
  */
 
-#include "../include/std/memory"
-#include "../include/std/cmath"
+#include <std/cerrno>
 
-#include <stdio.h>
-
-#include "../include/std/x86_instr.hpp"
-
-/* Using C-style printing functions to avoid conflicts with the C++'s std namespace */
-int main() {
-	printf("fmod() of 1000 %% 3: %f\n", std::fmod(2, 3));
-	printf("zl::math_instr::scale(): %f\n", zl::math_instr::scale(10.f, 10.f));
+namespace std {
+	int __errno_err_val__;
+	void __setup_errno__(int init_val) {
+		__errno_err_val__ = init_val;
+	}
 }
