@@ -20,7 +20,50 @@
 #ifndef STD_CSTDLIB
 #define STD_CSTDLIB
 
+#include <stddef.h>
+
+#include <cstring>
+
+#include "os.hpp"
+
+#ifndef NULL
+#defined NULL
+#endif
+
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE 1
+#endif
+
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS 0
+#endif
+
 namespace std {
+	using size_t = ::size_t;
+}
+
+namespace std {
+	[[noreturn]] void abort() noexcept {
+#ifdef __GNUC__
+	asm volatile(
+		"hlt"
+	);
+#else
+	asm("hlt");
+#endif	
+	}
+	/* Other termination functions are not defined because it is hard to implement them in
+	   an kernel/low level environment */
+	
+	inline void* aligned_alloc(size_t alignment, size_t bytes) { return zl::os::aligned_alloc(alignment, bytes); }
+	inline void* malloc(size_t bytes) { return zl::os::alloc(bytes); }
+	inline void* calloc(size_t num, std::size_t indiv_bytes) {
+		if (void *ptr = malloc(num * indiv_bytes))
+			return std::memset(ptr, 0, num * indiv_bytes);
+		return nullptr;
+	}
+	inline void free(void *ptr) { zl::os::free_mem(ptr); }
+
 	template<typename T>
 	inline constexpr T abs(T x) {
 		return (x < 0) ? -x : x;

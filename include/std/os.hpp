@@ -20,9 +20,16 @@
 #ifndef STD_OS_HPP
 #define STD_OS_HPP
 
+#include <cstdlib>
+
 namespace zl::os {
 	// Define platform
 	#define X86
+
+	// Need to define these for your platform
+	inline void* aligned_alloc(std::size_t alignment, std::size_t bytes) {}
+	inline void* alloc(std::size_t bytes) {}
+	inline void free_mem(void *ptr) {}
 }
 
 #endif /* STD_OS_HPP */

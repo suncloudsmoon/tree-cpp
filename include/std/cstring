@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2022, suncloudsmoon and the tree-cpp contributors.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#ifndef STD_CSTRING
+#define STD_CSTRING
+
+#include <stddef.h>
+
+#include <cstdlib>
+
+namespace std {
+	// Memory utility
+	void* memcpy(void *dest, const void *src, size_t bytes);
+	void* memmove(void *dest, const void *src, size_t bytes);
+	void* memset(void *dest, int ch, size_t bytes);
+	
+	int memcmp(const void *src1, const void *src2, size_t bytes);
+	
+	const void* memchr(const void *src, int key, size_t bytes);
+	inline void* memchr(void *src, int key, size_t bytes)
+	{ return const_cast<void*>(memchr(static_cast<const void*>(src), key, bytes)); }
+
+	// String manipulation utility
+	size_t strlen(const char *src);
+	char* strcpy(char *dest, const char *src);
+	char* strncpy(char *dest, const char *src, size_t count);
+
+	char* strcat(char *dest, const char *src);
+	char* strncat(char *dest, const char *src, size_t count);
+	
+	int strcmp(const char *src1, const char *src2);
+	int strncmp(const char *src1, const char *src2, size_t count);
+	
+	const char* strchr(const char *str, int key);
+	inline char* strchr(char *str, int key)
+	{ return const_cast<char*>(strchr(static_cast<const char*>(str), key)); }
+	
+	const char* strpbrk(const char *src1, const char *src2);
+	inline char* strpbrk(char *src1, const char *src2) 
+	{ return const_cast<char*>(strpbrk(static_cast<const char*>(src1), src2)); }
+	
+	const char* strrchr(const char *src, int key);
+	inline char* strrchr(char *src, int key) 
+	{ return const_cast<char*>(strrchr(static_cast<const char*>(src), key)); }
+
+	const char* strstr(const char *src1, const char *src2);
+	inline char* strstr(char *src1, const char *src2)
+	{ return const_cast<char*>(strstr(static_cast<const char*>(src1), src2)); }
+
+	size_t strspn(const char *src1, const char *src2);
+	size_t strcspn(const char *src1, const char *src2);
+
+	/* strcoll() is not implemented due to constraints */
+}
+
+#endif /* STD_CSTRING */
